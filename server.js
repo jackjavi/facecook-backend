@@ -19,7 +19,7 @@ app.use(notFound);
 const start = async () => {
   try {
     connectDB(
-      "mongodb+srv://jackkavi:XHuDbmcEDty47x9t@cluster0.t34ww.mongodb.net/myFirstDatabase?retryWrites=true&w=majority"
+      "mongodb+srv://jackjavi:jackjavi@cluster0.p6gr2.mongodb.net/?retryWrites=true&w=majority"
     );
     app.listen(port, console.log(`server listening on port: ${port}...`));
   } catch (err) {
