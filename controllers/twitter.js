@@ -1,4 +1,4 @@
-const Acc = require("../models/Instagram");
+const Acc = require("../models/Twitter");
 
 const getAllAccs = async (req, res) => {
   try {
@@ -26,7 +26,7 @@ const getSingleAcc = async (req, res) => {
 const addAcc = async (req, res) => {
   try {
     const acc = await Acc.create(req.body);
-
+    console.log(acc);
     res.status(200).json(acc);
   } catch (err) {
     res.status(500).json({ msg: err });
