@@ -1,8 +1,8 @@
-const Acc = require("../models/Instagram");
+const Instagram = require("../models/Instagram");
 
 const getAllAccs = async (req, res) => {
   try {
-    const accs = await Acc.find({});
+    const accs = await Instagram.find({});
     res.status(200).json(accs);
   } catch (err) {
     res.status(500).json({ msg: err });
@@ -11,7 +11,7 @@ const getAllAccs = async (req, res) => {
 
 const getSingleAcc = async (req, res) => {
   try {
-    const acc = await Acc.findOne({ _id: req.params.id });
+    const acc = await Instagram.findOne({ _id: req.params.id });
     if (!acc) {
       res
         .status(404)
@@ -25,7 +25,7 @@ const getSingleAcc = async (req, res) => {
 
 const addAcc = async (req, res) => {
   try {
-    const acc = await Acc.create(req.body);
+    const acc = await Instagram.create(req.body);
     console.log(acc);
     res.status(200).json(acc);
   } catch (err) {
@@ -35,10 +35,14 @@ const addAcc = async (req, res) => {
 
 const modifyAcc = async (req, res) => {
   try {
-    const acc = await Acc.findOneAndUpdate({ _id: req.params.id }, req.body, {
-      new: true,
-      runValidators: true,
-    });
+    const acc = await Instagram.findOneAndUpdate(
+      { _id: req.params.id },
+      req.body,
+      {
+        new: true,
+        runValidators: true,
+      }
+    );
     if (!acc) {
       res
         .status(404)
@@ -52,7 +56,7 @@ const modifyAcc = async (req, res) => {
 
 const deleteAcc = async (req, res) => {
   try {
-    const acc = await Acc.findOneAndDelete({ _id: req.params.id });
+    const acc = await Instagram.findOneAndDelete({ _id: req.params.id });
     if (!acc) {
       res
         .status(404)
