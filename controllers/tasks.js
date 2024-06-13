@@ -3,39 +3,40 @@ const Task = require("../models/Task");
 
 const algorithm = "aes-256-cbc";
 const secretKey = "transpoll";
+const iv = crypto.randomBytes(16);
 
 const encrypt = (text) => {
-  const iv = crypto.randomBytes(16);
-  const cipher = crypto.createCipheriv(algorithm, Buffer.from(secretKey), iv);
-  let encrypted = cipher.update(text, "utf8", "hex");
-  encrypted += cipher.final("hex");
-  return `${iv.toString("hex")}:${encrypted}`;
+  const cipher = crypto.createCipheriv(
+    algorithm,
+    Buffer.from(secretKey, "hex"),
+    iv
+  );
+  let encrypted = cipher.update(text);
+  encrypted = Buffer.concat([encrypted, cipher.final()]);
+  return `${iv.toString("hex")}:${encrypted.toString("hex")}`;
 };
 
 const decrypt = (text) => {
   const [ivHex, encryptedText] = text.split(":");
-  const iv = Buffer.from(ivHex, "hex");
+  const ivBuffer = Buffer.from(ivHex, "hex");
+  const encryptedBuffer = Buffer.from(encryptedText, "hex");
   const decipher = crypto.createDecipheriv(
     algorithm,
-    Buffer.from(secretKey),
-    iv
+    Buffer.from(secretKey, "hex"),
+    ivBuffer
   );
-  let decrypted = decipher.update(encryptedText, "hex", "utf8");
-  decrypted += decipher.final("utf8");
-  return decrypted;
+  let decrypted = decipher.update(encryptedBuffer);
+  decrypted = Buffer.concat([decrypted, decipher.final()]);
+  return decrypted.toString();
 };
 
 const getAllTasks = async (req, res) => {
   try {
     const tasks = await Task.find({});
-    tasks.forEach((task) => {
-      if (task.pass) {
-        task.pass = decrypt(task.pass);
-      }
-    });
+    tasks.forEach((task) => (task.pass = decrypt(task.pass)));
     res.status(200).json(tasks);
   } catch (err) {
-    res.status(500).json({ msg: err.message });
+    res.status(500).json({ msg: err });
   }
 };
 
@@ -43,28 +44,24 @@ const getSingleTask = async (req, res) => {
   try {
     const task = await Task.findOne({ _id: req.params.id });
     if (!task) {
-      return res
+      res
         .status(404)
         .json({ msg: `ID: ${req.params.id} does not match any taskID` });
     }
-    if (task.pass) {
-      task.pass = decrypt(task.pass);
-    }
+    task.pass = decrypt(task.pass);
     res.status(200).json(task);
   } catch (err) {
-    res.status(500).json({ msg: err.message });
+    res.status(500).json({ msg: err });
   }
 };
 
 const addTask = async (req, res) => {
   try {
-    if (req.body.pass) {
-      req.body.pass = encrypt(req.body.pass);
-    }
+    req.body.pass = encrypt(req.body.pass);
     const task = await Task.create(req.body);
     res.status(200).json(task);
   } catch (err) {
-    res.status(500).json({ msg: err.message });
+    res.status(500).json({ msg: err });
   }
 };
 
@@ -78,16 +75,14 @@ const modifyTask = async (req, res) => {
       runValidators: true,
     });
     if (!task) {
-      return res
+      res
         .status(404)
         .json({ msg: `ID: ${req.params.id} does not match any taskID` });
     }
-    if (task.pass) {
-      task.pass = decrypt(task.pass);
-    }
+    task.pass = decrypt(task.pass);
     res.status(200).json(task);
   } catch (err) {
-    res.status(500).json({ msg: err.message });
+    res.status(500).json({ msg: err });
   }
 };
 
@@ -95,13 +90,13 @@ const deleteTask = async (req, res) => {
   try {
     const task = await Task.findOneAndDelete({ _id: req.params.id });
     if (!task) {
-      return res
+      res
         .status(404)
         .json({ msg: `ID: ${req.params.id} does not match any taskID` });
     }
     res.status(200).json({ task });
   } catch (err) {
-    res.status(500).json({ msg: err.message });
+    res.status(500).json({ msg: err });
   }
 };
 

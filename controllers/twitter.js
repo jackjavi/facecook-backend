@@ -2,44 +2,41 @@ const crypto = require("crypto");
 const Acc = require("../models/Twitter");
 
 const algorithm = "aes-256-cbc";
-const secretKey = crypto
-  .createHash("sha256")
-  .update("transpoll")
-  .digest("base64")
-  .substr(0, 32);
+const secretKey = "transpoll";
+const iv = crypto.randomBytes(16);
 
 const encrypt = (text) => {
-  const iv = crypto.randomBytes(16);
-  const cipher = crypto.createCipheriv(algorithm, Buffer.from(secretKey), iv);
-  let encrypted = cipher.update(text, "utf8", "hex");
-  encrypted += cipher.final("hex");
-  return `${iv.toString("hex")}:${encrypted}`;
+  const cipher = crypto.createCipheriv(
+    algorithm,
+    Buffer.from(secretKey, "hex"),
+    iv
+  );
+  let encrypted = cipher.update(text);
+  encrypted = Buffer.concat([encrypted, cipher.final()]);
+  return `${iv.toString("hex")}:${encrypted.toString("hex")}`;
 };
 
 const decrypt = (text) => {
   const [ivHex, encryptedText] = text.split(":");
-  const iv = Buffer.from(ivHex, "hex");
+  const ivBuffer = Buffer.from(ivHex, "hex");
+  const encryptedBuffer = Buffer.from(encryptedText, "hex");
   const decipher = crypto.createDecipheriv(
     algorithm,
-    Buffer.from(secretKey),
-    iv
+    Buffer.from(secretKey, "hex"),
+    ivBuffer
   );
-  let decrypted = decipher.update(encryptedText, "hex", "utf8");
-  decrypted += decipher.final("utf8");
-  return decrypted;
+  let decrypted = decipher.update(encryptedBuffer);
+  decrypted = Buffer.concat([decrypted, decipher.final()]);
+  return decrypted.toString();
 };
 
 const getAllAccs = async (req, res) => {
   try {
     const accs = await Acc.find({});
-    accs.forEach((acc) => {
-      if (acc.pass) {
-        acc.pass = decrypt(acc.pass);
-      }
-    });
+    accs.forEach((acc) => (acc.pass = decrypt(acc.pass)));
     res.status(200).json(accs);
   } catch (err) {
-    res.status(500).json({ msg: err.message });
+    res.status(500).json({ msg: err });
   }
 };
 
@@ -47,28 +44,24 @@ const getSingleAcc = async (req, res) => {
   try {
     const acc = await Acc.findOne({ _id: req.params.id });
     if (!acc) {
-      return res
+      res
         .status(404)
         .json({ msg: `ID: ${req.params.id} does not match any taskID` });
     }
-    if (acc.pass) {
-      acc.pass = decrypt(acc.pass);
-    }
+    acc.pass = decrypt(acc.pass);
     res.status(200).json(acc);
   } catch (err) {
-    res.status(500).json({ msg: err.message });
+    res.status(500).json({ msg: err });
   }
 };
 
 const addAcc = async (req, res) => {
   try {
-    if (req.body.pass) {
-      req.body.pass = encrypt(req.body.pass);
-    }
+    req.body.pass = encrypt(req.body.pass);
     const acc = await Acc.create(req.body);
     res.status(200).json(acc);
   } catch (err) {
-    res.status(500).json({ msg: err.message });
+    res.status(500).json({ msg: err });
   }
 };
 
@@ -82,16 +75,14 @@ const modifyAcc = async (req, res) => {
       runValidators: true,
     });
     if (!acc) {
-      return res
+      res
         .status(404)
         .json({ msg: `ID: ${req.params.id} does not match any taskID` });
     }
-    if (acc.pass) {
-      acc.pass = decrypt(acc.pass);
-    }
+    acc.pass = decrypt(acc.pass);
     res.status(200).json(acc);
   } catch (err) {
-    res.status(500).json({ msg: err.message });
+    res.status(500).json({ msg: err });
   }
 };
 
@@ -99,13 +90,13 @@ const deleteAcc = async (req, res) => {
   try {
     const acc = await Acc.findOneAndDelete({ _id: req.params.id });
     if (!acc) {
-      return res
+      res
         .status(404)
         .json({ msg: `ID: ${req.params.id} does not match any taskID` });
     }
     res.status(200).json({ acc });
   } catch (err) {
-    res.status(500).json({ msg: err.message });
+    res.status(500).json({ msg: err });
   }
 };
 
