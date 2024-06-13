@@ -5,6 +5,8 @@ const instagram = require("./routes/instagram");
 const twitter = require("./routes/twitter");
 const connectDB = require("./db/connect");
 const notFound = require("./middlewares/notFound");
+const dotenv = require("dotenv");
+dotenv.config();
 
 const app = express();
 
@@ -22,9 +24,7 @@ app.use(notFound);
 
 const start = async () => {
   try {
-    connectDB(
-      "mongodb+srv://jackmtembete:sNhy5mes5ehjjkbx@cluster0.s1s753r.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0"
-    );
+    connectDB(process.env.MONGO_URI);
     app.listen(port, console.log(`server listening on port: ${port}...`));
   } catch (err) {
     console.log(err);
