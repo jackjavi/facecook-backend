@@ -24,7 +24,9 @@ app.use(notFound);
 
 const start = async () => {
   try {
-    connectDB(process.env.MONGO_URI);
+    connectDB(
+      "mongodb+srv://jackmtembete:sNhy5mes5ehjjkbx@cluster0.s1s753r.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0"
+    );
     app.listen(port, console.log(`server listening on port: ${port}...`));
   } catch (err) {
     console.log(err);
