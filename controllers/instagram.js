@@ -2,41 +2,44 @@ const crypto = require("crypto");
 const Instagram = require("../models/Instagram");
 
 const algorithm = "aes-256-cbc";
-const secretKey = "transpoll";
-const iv = crypto.randomBytes(16);
+const secretKey = crypto
+  .createHash("sha256")
+  .update("transpoll")
+  .digest("base64")
+  .substr(0, 32);
 
 const encrypt = (text) => {
-  const cipher = crypto.createCipheriv(
-    algorithm,
-    Buffer.from(secretKey, "hex"),
-    iv
-  );
-  let encrypted = cipher.update(text);
-  encrypted = Buffer.concat([encrypted, cipher.final()]);
-  return `${iv.toString("hex")}:${encrypted.toString("hex")}`;
+  const iv = crypto.randomBytes(16);
+  const cipher = crypto.createCipheriv(algorithm, Buffer.from(secretKey), iv);
+  let encrypted = cipher.update(text, "utf8", "hex");
+  encrypted += cipher.final("hex");
+  return `${iv.toString("hex")}:${encrypted}`;
 };
 
 const decrypt = (text) => {
   const [ivHex, encryptedText] = text.split(":");
-  const ivBuffer = Buffer.from(ivHex, "hex");
-  const encryptedBuffer = Buffer.from(encryptedText, "hex");
+  const iv = Buffer.from(ivHex, "hex");
   const decipher = crypto.createDecipheriv(
     algorithm,
-    Buffer.from(secretKey, "hex"),
-    ivBuffer
+    Buffer.from(secretKey),
+    iv
   );
-  let decrypted = decipher.update(encryptedBuffer);
-  decrypted = Buffer.concat([decrypted, decipher.final()]);
-  return decrypted.toString();
+  let decrypted = decipher.update(encryptedText, "hex", "utf8");
+  decrypted += decipher.final("utf8");
+  return decrypted;
 };
 
 const getAllAccs = async (req, res) => {
   try {
     const accs = await Instagram.find({});
-    accs.forEach((acc) => (acc.pass = decrypt(acc.pass)));
+    accs.forEach((acc) => {
+      if (acc.pass) {
+        acc.pass = decrypt(acc.pass);
+      }
+    });
     res.status(200).json(accs);
   } catch (err) {
-    res.status(500).json({ msg: err });
+    res.status(500).json({ msg: err.message });
   }
 };
 
@@ -44,24 +47,28 @@ const getSingleAcc = async (req, res) => {
   try {
     const acc = await Instagram.findOne({ _id: req.params.id });
     if (!acc) {
-      res
+      return res
         .status(404)
         .json({ msg: `ID: ${req.params.id} does not match any taskID` });
     }
-    acc.pass = decrypt(acc.pass);
+    if (acc.pass) {
+      acc.pass = decrypt(acc.pass);
+    }
     res.status(200).json(acc);
   } catch (err) {
-    res.status(500).json({ msg: err });
+    res.status(500).json({ msg: err.message });
   }
 };
 
 const addAcc = async (req, res) => {
   try {
-    req.body.pass = encrypt(req.body.pass);
+    if (req.body.pass) {
+      req.body.pass = encrypt(req.body.pass);
+    }
     const acc = await Instagram.create(req.body);
     res.status(200).json(acc);
   } catch (err) {
-    res.status(500).json({ msg: err });
+    res.status(500).json({ msg: err.message });
   }
 };
 
@@ -79,14 +86,16 @@ const modifyAcc = async (req, res) => {
       }
     );
     if (!acc) {
-      res
+      return res
         .status(404)
         .json({ msg: `ID: ${req.params.id} does not match any taskID` });
     }
-    acc.pass = decrypt(acc.pass);
+    if (acc.pass) {
+      acc.pass = decrypt(acc.pass);
+    }
     res.status(200).json(acc);
   } catch (err) {
-    res.status(500).json({ msg: err });
+    res.status(500).json({ msg: err.message });
   }
 };
 
@@ -94,13 +103,13 @@ const deleteAcc = async (req, res) => {
   try {
     const acc = await Instagram.findOneAndDelete({ _id: req.params.id });
     if (!acc) {
-      res
+      return res
         .status(404)
         .json({ msg: `ID: ${req.params.id} does not match any taskID` });
     }
     res.status(200).json({ acc });
   } catch (err) {
-    res.status(500).json({ msg: err });
+    res.status(500).json({ msg: err.message });
   }
 };
 
