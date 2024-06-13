@@ -1,19 +1,38 @@
-const Task = require("../models/Task");
+const fs = require("fs");
+const path = require("path");
 
-const getAllTasks = async (req, res) => {
+const dataFilePath = path.join(__dirname, "tasks.json");
+
+// Helper function to read data from the JSON file
+const readDataFromFile = () => {
   try {
-    const tasks = await Task.find({});
+    const data = fs.readFileSync(dataFilePath, "utf8");
+    return JSON.parse(data);
+  } catch (err) {
+    return [];
+  }
+};
+
+// Helper function to write data to the JSON file
+const writeDataToFile = (data) => {
+  fs.writeFileSync(dataFilePath, JSON.stringify(data, null, 2));
+};
+
+const getAllTasks = (req, res) => {
+  try {
+    const tasks = readDataFromFile();
     res.status(200).json(tasks);
   } catch (err) {
     res.status(500).json({ msg: err });
   }
 };
 
-const getSingleTask = async (req, res) => {
+const getSingleTask = (req, res) => {
   try {
-    const task = await Task.findOne({ _id: req.params.id });
+    const tasks = readDataFromFile();
+    const task = tasks.find((task) => task._id === req.params.id);
     if (!task) {
-      res
+      return res
         .status(404)
         .json({ msg: `ID: ${req.params.id} does not match any taskID` });
     }
@@ -23,42 +42,47 @@ const getSingleTask = async (req, res) => {
   }
 };
 
-const addTask = async (req, res) => {
+const addTask = (req, res) => {
   try {
-    const task = await Task.create(req.body);
-
-    res.status(200).json(task);
+    const tasks = readDataFromFile();
+    const newTask = { _id: String(Date.now()), ...req.body };
+    tasks.push(newTask);
+    writeDataToFile(tasks);
+    res.status(200).json(newTask);
   } catch (err) {
     res.status(500).json({ msg: err });
   }
 };
 
-const modifyTask = async (req, res) => {
+const modifyTask = (req, res) => {
   try {
-    const task = await Task.findOneAndUpdate({ _id: req.params.id }, req.body, {
-      new: true,
-      runValidators: true,
-    });
-    if (!task) {
-      res
+    const tasks = readDataFromFile();
+    const index = tasks.findIndex((task) => task._id === req.params.id);
+    if (index === -1) {
+      return res
         .status(404)
         .json({ msg: `ID: ${req.params.id} does not match any taskID` });
     }
-    res.status(200).json(task);
+    tasks[index] = { ...tasks[index], ...req.body };
+    writeDataToFile(tasks);
+    res.status(200).json(tasks[index]);
   } catch (err) {
     res.status(500).json({ msg: err });
   }
 };
 
-const deleteTask = async (req, res) => {
+const deleteTask = (req, res) => {
   try {
-    const task = await Task.findOneAndDelete({ _id: req.params.id });
-    if (!task) {
-      res
+    const tasks = readDataFromFile();
+    const index = tasks.findIndex((task) => task._id === req.params.id);
+    if (index === -1) {
+      return res
         .status(404)
         .json({ msg: `ID: ${req.params.id} does not match any taskID` });
     }
-    res.status(200).json({ task });
+    const deletedTask = tasks.splice(index, 1);
+    writeDataToFile(tasks);
+    res.status(200).json({ task: deletedTask });
   } catch (err) {
     res.status(500).json({ msg: err });
   }

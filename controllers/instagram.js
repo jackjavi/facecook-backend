@@ -1,21 +1,40 @@
-const Instagram = require("../models/Instagram");
+const fs = require("fs");
+const path = require("path");
 
-const getAllAccs = async (req, res) => {
+const dataFilePath = path.join(__dirname, "instagramAccs.json");
+
+// Helper function to read data from the JSON file
+const readDataFromFile = () => {
   try {
-    const accs = await Instagram.find({});
+    const data = fs.readFileSync(dataFilePath, "utf8");
+    return JSON.parse(data);
+  } catch (err) {
+    return [];
+  }
+};
+
+// Helper function to write data to the JSON file
+const writeDataToFile = (data) => {
+  fs.writeFileSync(dataFilePath, JSON.stringify(data, null, 2));
+};
+
+const getAllAccs = (req, res) => {
+  try {
+    const accs = readDataFromFile();
     res.status(200).json(accs);
   } catch (err) {
     res.status(500).json({ msg: err });
   }
 };
 
-const getSingleAcc = async (req, res) => {
+const getSingleAcc = (req, res) => {
   try {
-    const acc = await Instagram.findOne({ _id: req.params.id });
+    const accs = readDataFromFile();
+    const acc = accs.find((acc) => acc._id === req.params.id);
     if (!acc) {
-      res
+      return res
         .status(404)
-        .json({ msg: `ID: ${req.params.id} does not match any taskID` });
+        .json({ msg: `ID: ${req.params.id} does not match any account ID` });
     }
     res.status(200).json(acc);
   } catch (err) {
@@ -23,46 +42,47 @@ const getSingleAcc = async (req, res) => {
   }
 };
 
-const addAcc = async (req, res) => {
+const addAcc = (req, res) => {
   try {
-    const acc = await Instagram.create(req.body);
-    console.log(acc);
-    res.status(200).json(acc);
+    const accs = readDataFromFile();
+    const newAcc = { _id: String(Date.now()), ...req.body };
+    accs.push(newAcc);
+    writeDataToFile(accs);
+    res.status(200).json(newAcc);
   } catch (err) {
     res.status(500).json({ msg: err });
   }
 };
 
-const modifyAcc = async (req, res) => {
+const modifyAcc = (req, res) => {
   try {
-    const acc = await Instagram.findOneAndUpdate(
-      { _id: req.params.id },
-      req.body,
-      {
-        new: true,
-        runValidators: true,
-      }
-    );
-    if (!acc) {
-      res
+    const accs = readDataFromFile();
+    const index = accs.findIndex((acc) => acc._id === req.params.id);
+    if (index === -1) {
+      return res
         .status(404)
-        .json({ msg: `ID: ${req.params.id} does not match any taskID` });
+        .json({ msg: `ID: ${req.params.id} does not match any account ID` });
     }
-    res.status(200).json(acc);
+    accs[index] = { ...accs[index], ...req.body };
+    writeDataToFile(accs);
+    res.status(200).json(accs[index]);
   } catch (err) {
     res.status(500).json({ msg: err });
   }
 };
 
-const deleteAcc = async (req, res) => {
+const deleteAcc = (req, res) => {
   try {
-    const acc = await Instagram.findOneAndDelete({ _id: req.params.id });
-    if (!acc) {
-      res
+    const accs = readDataFromFile();
+    const index = accs.findIndex((acc) => acc._id === req.params.id);
+    if (index === -1) {
+      return res
         .status(404)
-        .json({ msg: `ID: ${req.params.id} does not match any taskID` });
+        .json({ msg: `ID: ${req.params.id} does not match any account ID` });
     }
-    res.status(200).json({ acc });
+    const deletedAcc = accs.splice(index, 1);
+    writeDataToFile(accs);
+    res.status(200).json({ acc: deletedAcc });
   } catch (err) {
     res.status(500).json({ msg: err });
   }
